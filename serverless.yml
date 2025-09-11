@@ -1,0 +1,57 @@
+# "org" ensures this Service is used with the correct Serverless Framework Access Key.
+org: jakobjavascript24
+# "service" is the name of this project. This will also be added to your AWS resource names.
+service: swingnotes
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: eu-north-1
+  role: arn:aws:iam::791493234438:role/cloudPushRole
+
+  # Uncomment to easily set up a custom domain. Read the docs for more details:
+  # https://www.serverless.com/framework/docs/providers/aws/guide/domains
+  # domain: api.example.com
+
+functions:
+  deleteNotes:
+    handler: functions/deleteNotes/index.handler
+    events:
+      - httpApi:
+          path: /api/notes/{id}
+          method: delete
+  getNotes:
+    handler: functions/getNotes/index.handler
+    events:
+      - httpApi:
+          path: /api/notes/{username}
+          method: get
+  postNotes:
+    handler: functions/postNotes/index.handler
+    events:
+      - httpApi:
+          path: /api/notes/{username}
+          method: post
+  putNotes:
+    handler: functions/putNotes/index.handler
+    events:
+      - httpApi:
+          path: /api/notes/{id}
+          method: put
+resources:
+  Resources:
+    EventsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: NotificationTable
+        AttributeDefinitions:
+          - AttributeName: pk
+            AttributeType: S
+          - AttributeName: sk
+            AttributeType: S
+        KeySchema:
+          - AttributeName: pk
+            KeyType: HASH
+          - AttributeName: sk
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
