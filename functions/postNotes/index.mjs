@@ -1,17 +1,25 @@
 import { PutItemCommand, DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import httpJsonBodyParser from "@middy/http-json-body-parser";
+import middy from "@middy/core";
+import { v4 as uuidv4 } from "uuid";
+import validator from "@middy/validator";
+import { createNoteSchema } from "../../middlewares/schemas/createNotesSchema.mjs";
+import { transpileSchema } from "@middy/validator/transpile";
 
-export const handler = async (event) => {
+const postHandler = async (event) => {
   const client = new DynamoDBClient({ region: "eu-north-1" });
   try {
     const userName = event.pathParameters.username;
-    const body = JSON.parse(event.body);
-    const { noteId, title, text } = body;
+    // behöver ej parsa för har httpjsonbodyparser
+    const body = event.body;
+    const { title, text } = body;
+    const id = uuidv4();
 
     const putCommand = new PutItemCommand({
       TableName: "NotificationTable",
       Item: {
         pk: { S: `USERNAME#${userName}` },
-        sk: { S: `NOTEID#${noteId}` },
+        sk: { S: `NOTEID#${id}` },
         title: { S: `${title}` },
         text: { S: `${text}` },
         createdAt: { S: new Date().toISOString() },
@@ -35,3 +43,7 @@ export const handler = async (event) => {
     };
   }
 };
+
+export const handler = middy(postHandler)
+  .use(httpJsonBodyParser())
+  .use(validator({ eventSchema: transpileSchema(createNoteSchema) }));
