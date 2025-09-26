@@ -5,11 +5,16 @@ import { v4 as uuidv4 } from "uuid";
 import validator from "@middy/validator";
 import { createNoteSchema } from "../../middlewares/schemas/createNotesSchema.mjs";
 import { transpileSchema } from "@middy/validator/transpile";
+import { errorHandler } from "../../middlewares/errorHander.mjs";
+import createError from "http-errors";
 
 const postHandler = async (event) => {
   const client = new DynamoDBClient({ region: "eu-north-1" });
   try {
     const userName = event.pathParameters.username;
+    if (!userName) {
+      throw new createError.BadRequest("missing username in pathparameters!");
+    }
     // behöver ej parsa för har httpjsonbodyparser
     const body = event.body;
     const { title, text } = body;
@@ -34,16 +39,14 @@ const postHandler = async (event) => {
       }),
     };
   } catch (err) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({
-        success: false,
-        message: err.message,
-      }),
-    };
+    console.log("error:", err);
+    throw new createError.InternalServerError(
+      `Failed to post note : ${err.message}`
+    );
   }
 };
 
 export const handler = middy(postHandler)
   .use(httpJsonBodyParser())
-  .use(validator({ eventSchema: transpileSchema(createNoteSchema) }));
+  .use(validator({ eventSchema: transpileSchema(createNoteSchema) }))
+  .use(errorHandler());
